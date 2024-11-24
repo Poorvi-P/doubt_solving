@@ -1,0 +1,152 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+
+model User {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  name          String?
+  email         String   @unique
+  password      String?
+  emailVerified DateTime?
+  image         String?
+  role          Role    @default(STUDENT)
+  // Relations
+  department    Department? @relation(fields: [departmentId], references: [id])
+  departmentId  String?     @db.ObjectId
+  campus        Campus?     @relation(fields: [campusId], references: [id])
+  campusId      String?     @db.ObjectId
+  course        Course?     @relation(fields: [courseId], references: [id])
+  courseId      String?     @db.ObjectId
+  semester      Semester?   @relation(fields: [semesterId], references: [id])
+  semesterId    String?     @db.ObjectId
+
+  accounts Account[]
+  sessions Session[]
+  doubtPosts DoubtPost[] @relation("UserDoubtPosts")
+  Answer Answer[]
+
+  @@index([role])
+}
+
+enum Role {
+  TEACHER
+  STUDENT
+}
+
+model Account {
+  id                 String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId             String  @db.ObjectId
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?
+  access_token       String?
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionToken String   @unique
+  userId       String   @db.ObjectId
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+     identifier String @id @map("_id")
+     token      String @unique 
+     expires    DateTime
+
+     @@unique([identifier, token])
+}
+
+model Department {
+  id      String   @id @default(auto()) @map("_id") @db.ObjectId
+  name    String   @unique
+  users   User[]
+}
+
+model Semester {
+  id      String   @id @default(auto()) @map("_id") @db.ObjectId
+  name    String   @unique
+  users   User[]
+}
+
+model Campus {
+  id      String   @id @default(auto()) @map("_id") @db.ObjectId
+  name    String   @unique
+  users   User[]
+}
+
+model Course {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String   @unique
+  users       User[]
+}
+
+
+model DoubtPost {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  title       String 
+  description String
+  subject     String
+  tags        String[]
+  imgUrl      String[]
+  likedby     String[]
+  userId      String    @db.ObjectId
+  user        User      @relation("UserDoubtPosts", fields: [userId], references: [id])
+  userName    String
+  userRole    String
+  upvotes     Int       @default(0)
+  downvotes   Int       @default(0)
+  likes       String[]  // Array of user IDs who liked the post
+  answers     Answer[]  // Relation to Answer model
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([tags])
+  @@index([createdAt(sort: Desc)])
+  @@index([userId])
+}
+
+model Answer {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  content     String
+  userId      String    @db.ObjectId
+  user        User      @relation(fields: [userId], references: [id])
+  doubtPostId String    @db.ObjectId
+  doubtPost   DoubtPost @relation(fields: [doubtPostId], references: [id])
+  upvotes     Int       @default(0)
+  downvotes   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([doubtPostId])
+  @@index([userId])
+}
+
+model ChatMessage {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  message    String
+  senderId   String   // or reference a User model if you have one
+  receiverId String   // or reference a User model if you have one
+  createdAt  DateTime @default(now())
+}
